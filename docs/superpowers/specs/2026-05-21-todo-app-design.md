@@ -129,7 +129,7 @@ All records are soft-deleted for audit purposes. No data is ever permanently rem
 
 **Request body:**
 ```json
-{ "title": "string (required, non-empty)" }
+{ "title": "string (required, 1-200 chars)" }
 ```
 
 **Response 201:**
@@ -163,7 +163,7 @@ All records are soft-deleted for audit purposes. No data is ever permanently rem
 
 | Status | Meaning                          |
 |--------|----------------------------------|
-| 400    | Validation error (empty title, invalid ID) |
+| 400    | Validation error (empty title, title > 200 chars, invalid ID) |
 | 404    | Todo not found                   |
 | 500    | Database or internal error       |
 
@@ -184,7 +184,7 @@ All errors return:
 - **SWR** for caching, auto-revalidation, and optimistic updates
 - Loading skeletons on initial fetch
 - Inline toggle and delete with immediate visual feedback
-- Form validation: title must be non-empty string
+- Form validation: title must be 1-200 characters
 
 ## Deployment
 
