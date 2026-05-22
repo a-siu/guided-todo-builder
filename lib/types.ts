@@ -22,3 +22,18 @@ export interface ApiResponse<T> {
   todos?: T[];
   error?: string;
 }
+
+export interface AuthUser {
+  id: string;
+  username: string;
+}
+
+export interface RegisterInput {
+  username: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  user?: AuthUser;
+  error?: string;
+}
