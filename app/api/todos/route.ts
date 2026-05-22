@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth/config";
 import { todoService } from "@/lib/services/todo.service";
 import { auditService } from "@/lib/services/audit.service";
 
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const includeDeleted = searchParams.get("includeDeleted") === "true";
 
   try {
     const todos = includeDeleted
-      ? await auditService.getAllTodos()
-      : await todoService.getTodos();
+      ? await auditService.getAllTodos(session.user.id)
+      : await todoService.getTodos(session.user.id);
 
     return NextResponse.json({ todos });
   } catch {
@@ -18,9 +24,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { title } = await request.json();
-    const result = await todoService.createTodo({ title });
+    const result = await todoService.createTodo({ title }, session.user.id);
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 400 });

@@ -1,5 +1,9 @@
 import { POST } from "../route";
 
+jest.mock("@/lib/auth/config", () => ({
+  auth: jest.fn().mockResolvedValue({ user: { id: "test-user" } }),
+}));
+
 describe("POST /api/todos", () => {
   it("returns 400 for malformed JSON", async () => {
     const request = {
