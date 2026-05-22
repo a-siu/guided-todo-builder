@@ -6,8 +6,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const todos = await todoService.getTodos();
-    const todo = todos.find((t) => t.id === params.id);
+    const todo = await todoService.getTodoById(params.id);
 
     if (!todo) {
       return NextResponse.json({ error: "Todo not found" }, { status: 404 });

@@ -14,6 +14,7 @@ export interface CreateTodoInput {
 export interface UpdateTodoInput {
   title?: string;
   completed?: boolean;
+  deletedAt?: Date | null;
 }
 
 export interface ApiResponse<T> {

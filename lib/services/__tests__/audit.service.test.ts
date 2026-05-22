@@ -1,5 +1,6 @@
 import { auditService } from "../audit.service";
 import { todoRepository } from "@/lib/repositories/todo.repository";
+import { UpdateTodoInput } from "@/lib/types";
 
 jest.mock("@/lib/repositories/todo.repository", () => ({
   todoRepository: {
@@ -28,9 +29,8 @@ describe("auditService", () => {
   });
 
   it("soft deletes a todo", async () => {
-    const now = new Date();
     (todoRepository.updateTodo as jest.Mock).mockImplementation(
-      async (_id: string, data: any) => ({
+      async       (_id: string, data: UpdateTodoInput) => ({
         id: "1",
         ...data,
       })

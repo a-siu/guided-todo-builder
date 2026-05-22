@@ -20,7 +20,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const result = await todoService.createTodo({ title: body.title });
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  try {
+    const { title } = await request.json();
+    const result = await todoService.createTodo({ title });
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 400 });

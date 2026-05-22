@@ -16,6 +16,10 @@ export const todoService = {
     return todos;
   },
 
+  async getTodoById(id: string): Promise<Todo | null> {
+    return todoRepository.findTodoById(id);
+  },
+
   async createTodo(input: CreateTodoInput): Promise<ApiResponse<Todo>> {
     const validation = validateTodoInput(input);
     if (!validation.valid) {
