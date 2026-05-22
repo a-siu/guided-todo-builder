@@ -6,8 +6,12 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
+    "test": "jest",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
     "db:push": "prisma db push",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "db:setup": "docker compose up -d postgres && sleep 2 && prisma db push"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
