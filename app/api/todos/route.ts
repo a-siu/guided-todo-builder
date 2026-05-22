@@ -19,12 +19,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  try {
     const { title } = await request.json();
     const result = await todoService.createTodo({ title });
 
@@ -33,7 +27,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ todo: result.todo }, { status: 201 });
-  } catch {
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
