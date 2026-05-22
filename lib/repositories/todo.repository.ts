@@ -2,22 +2,23 @@ import { prisma } from "@/lib/prisma";
 import { CreateTodoInput, UpdateTodoInput, Todo } from "@/lib/types";
 
 export const todoRepository = {
-  async findActiveTodos(): Promise<Todo[]> {
+  async findActiveTodos(userId: string): Promise<Todo[]> {
     return prisma.todo.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, userId },
       orderBy: { createdAt: "desc" },
     });
   },
 
-  async findAllTodos(): Promise<Todo[]> {
+  async findAllTodos(userId: string): Promise<Todo[]> {
     return prisma.todo.findMany({
+      where: { userId },
       orderBy: { createdAt: "desc" },
     });
   },
 
-  async findDeletedTodos(): Promise<Todo[]> {
+  async findDeletedTodos(userId: string): Promise<Todo[]> {
     return prisma.todo.findMany({
-      where: { deletedAt: { not: null } },
+      where: { deletedAt: { not: null }, userId },
       orderBy: { createdAt: "desc" },
     });
   },
@@ -28,9 +29,9 @@ export const todoRepository = {
     });
   },
 
-  async createTodo(input: CreateTodoInput): Promise<Todo> {
+  async createTodo(input: CreateTodoInput, userId: string): Promise<Todo> {
     return prisma.todo.create({
-      data: { title: input.title },
+      data: { title: input.title, userId },
     });
   },
 

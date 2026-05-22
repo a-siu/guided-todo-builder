@@ -1,6 +1,5 @@
 import { todoRepository } from "../todo.repository";
 
-// Mock prisma
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     todo: {
@@ -14,51 +13,52 @@ jest.mock("@/lib/prisma", () => ({
 
 import { prisma } from "@/lib/prisma";
 
+const userId = "user-1";
+
 describe("todoRepository", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+  beforeEach(() => jest.clearAllMocks());
 
-  it("finds all active todos", async () => {
-    (prisma.todo.findMany as jest.Mock).mockResolvedValue([{ id: "1", title: "test", deletedAt: null }]);
-    const result = await todoRepository.findActiveTodos();
+  it("finds active todos for a user", async () => {
+    (prisma.todo.findMany as jest.Mock).mockResolvedValue([{ id: "1", title: "test", deletedAt: null, userId }]);
+    const result = await todoRepository.findActiveTodos(userId);
     expect(result).toHaveLength(1);
     expect(prisma.todo.findMany).toHaveBeenCalledWith({
-      where: { deletedAt: null },
+      where: { deletedAt: null, userId },
       orderBy: { createdAt: "desc" },
     });
   });
 
-  it("finds all todos including deleted", async () => {
-    (prisma.todo.findMany as jest.Mock).mockResolvedValue([{ id: "1", title: "test", deletedAt: new Date() }]);
-    const result = await todoRepository.findAllTodos();
+  it("finds all todos for a user", async () => {
+    (prisma.todo.findMany as jest.Mock).mockResolvedValue([{ id: "1", title: "test", deletedAt: null, userId }]);
+    const result = await todoRepository.findAllTodos(userId);
     expect(result).toHaveLength(1);
     expect(prisma.todo.findMany).toHaveBeenCalledWith({
+      where: { userId },
       orderBy: { createdAt: "desc" },
     });
   });
 
-  it("finds only deleted todos", async () => {
-    (prisma.todo.findMany as jest.Mock).mockResolvedValue([{ id: "1", title: "test", deletedAt: new Date() }]);
-    const result = await todoRepository.findDeletedTodos();
+  it("finds deleted todos for a user", async () => {
+    (prisma.todo.findMany as jest.Mock).mockResolvedValue([{ id: "1", title: "test", deletedAt: new Date(), userId }]);
+    const result = await todoRepository.findDeletedTodos(userId);
     expect(result).toHaveLength(1);
     expect(prisma.todo.findMany).toHaveBeenCalledWith({
-      where: { deletedAt: { not: null } },
+      where: { deletedAt: { not: null }, userId },
       orderBy: { createdAt: "desc" },
     });
   });
 
-  it("creates a todo", async () => {
-    (prisma.todo.create as jest.Mock).mockResolvedValue({ id: "1", title: "new" });
-    const result = await todoRepository.createTodo({ title: "new" });
+  it("creates a todo for a user", async () => {
+    (prisma.todo.create as jest.Mock).mockResolvedValue({ id: "1", title: "new", userId });
+    const result = await todoRepository.createTodo({ title: "new" }, userId);
     expect(result.title).toBe("new");
     expect(prisma.todo.create).toHaveBeenCalledWith({
-      data: { title: "new" },
+      data: { title: "new", userId },
     });
   });
 
   it("updates a todo", async () => {
-    (prisma.todo.update as jest.Mock).mockResolvedValue({ id: "1", title: "updated" });
+    (prisma.todo.update as jest.Mock).mockResolvedValue({ id: "1", title: "updated", userId });
     const result = await todoRepository.updateTodo("1", { title: "updated" });
     expect(result.title).toBe("updated");
     expect(prisma.todo.update).toHaveBeenCalledWith({
@@ -68,7 +68,7 @@ describe("todoRepository", () => {
   });
 
   it("finds todo by id", async () => {
-    (prisma.todo.findUnique as jest.Mock).mockResolvedValue({ id: "1", title: "test" });
+    (prisma.todo.findUnique as jest.Mock).mockResolvedValue({ id: "1", title: "test", userId });
     const result = await todoRepository.findTodoById("1");
     expect(result?.id).toBe("1");
     expect(prisma.todo.findUnique).toHaveBeenCalledWith({ where: { id: "1" } });
