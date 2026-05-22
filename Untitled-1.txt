@@ -1,0 +1,7 @@
+a quick thing to prototype:
+a very typical TODO app.
+to be deployed to vercel
+so need to research on the deployment componant requirements
+we likely need a frontend, a backend, a db.
+
+lets first brainstorm a basic todo app
