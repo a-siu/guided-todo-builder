@@ -1,13 +1,16 @@
 "use client";
 
 import useSWR from "swr";
+import { useSession, signOut } from "next-auth/react";
 import { Todo } from "@/lib/types";
 import { TodoForm } from "@/components/TodoForm";
 import { TodoList } from "@/components/TodoList";
+import { AuthGuard } from "@/components/AuthGuard";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default function Home() {
+function HomeContent() {
+  const { data: session } = useSession();
   const { data, error, mutate } = useSWR<{ todos: Todo[] }>("/api/todos", fetcher);
 
   const handleCreate = async (title: string) => {
@@ -41,9 +44,28 @@ export default function Home() {
 
   return (
     <main className="max-w-2xl mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6">TODO App</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">TODO App</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">{session?.user?.name}</span>
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="text-sm text-red-500 hover:underline"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
       <TodoForm onSubmit={handleCreate} />
       <TodoList todos={data.todos} onToggle={handleToggle} onDelete={handleDelete} />
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <AuthGuard>
+      <HomeContent />
+    </AuthGuard>
   );
 }
