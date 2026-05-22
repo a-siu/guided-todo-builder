@@ -4,15 +4,14 @@ import { auditService } from "./audit.service";
 import { validateTodoInput, validateUpdateInput } from "@/lib/validation/todo.validation";
 import { CreateTodoInput, UpdateTodoInput, ApiResponse, Todo } from "@/lib/types";
 
-const TODOS_CACHE_KEY = "todos";
-
 export const todoService = {
-  async getTodos(): Promise<Todo[]> {
-    const cached = cacheService.get<Todo[]>(TODOS_CACHE_KEY);
+  async getTodos(userId: string): Promise<Todo[]> {
+    const cacheKey = `todos:${userId}`;
+    const cached = cacheService.get<Todo[]>(cacheKey);
     if (cached) return cached;
 
-    const todos = await todoRepository.findActiveTodos();
-    cacheService.set(TODOS_CACHE_KEY, todos);
+    const todos = await todoRepository.findActiveTodos(userId);
+    cacheService.set(cacheKey, todos);
     return todos;
   },
 
@@ -20,41 +19,41 @@ export const todoService = {
     return todoRepository.findTodoById(id);
   },
 
-  async createTodo(input: CreateTodoInput): Promise<ApiResponse<Todo>> {
+  async createTodo(input: CreateTodoInput, userId: string): Promise<ApiResponse<Todo>> {
     const validation = validateTodoInput(input);
     if (!validation.valid) {
       return { error: validation.error! };
     }
 
-    const todo = await todoRepository.createTodo(input);
-    cacheService.invalidate(TODOS_CACHE_KEY);
+    const todo = await todoRepository.createTodo(input, userId);
+    cacheService.invalidate(`todos:${userId}`);
     return { todo };
   },
 
-  async updateTodo(id: string, input: UpdateTodoInput): Promise<ApiResponse<Todo>> {
+  async updateTodo(id: string, input: UpdateTodoInput, userId: string): Promise<ApiResponse<Todo>> {
     const validation = validateUpdateInput(input);
     if (!validation.valid) {
       return { error: validation.error! };
     }
 
     const existing = await todoRepository.findTodoById(id);
-    if (!existing) {
+    if (!existing || existing.userId !== userId) {
       return { error: "Todo not found" };
     }
 
     const todo = await todoRepository.updateTodo(id, input);
-    cacheService.invalidate(TODOS_CACHE_KEY);
+    cacheService.invalidate(`todos:${userId}`);
     return { todo };
   },
 
-  async deleteTodo(id: string): Promise<ApiResponse<Todo>> {
+  async deleteTodo(id: string, userId: string): Promise<ApiResponse<Todo>> {
     const existing = await todoRepository.findTodoById(id);
-    if (!existing) {
+    if (!existing || existing.userId !== userId) {
       return { error: "Todo not found" };
     }
 
     const todo = await auditService.softDelete(id);
-    cacheService.invalidate(TODOS_CACHE_KEY);
+    cacheService.invalidate(`todos:${userId}`);
     return { todo };
   },
 };
