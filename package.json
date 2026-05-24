@@ -6,12 +6,12 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "test": "vitest run",
-    "db:up": "docker compose up -d postgres",
+    "test": "docker compose exec app npx vitest run",
+    "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "db:push": "prisma db push",
+    "db:push": "docker compose exec app npx prisma db push",
     "db:generate": "prisma generate",
-    "db:setup": "docker compose up -d postgres && sleep 2 && prisma db push"
+    "db:setup": "docker compose up -d --build && docker compose exec -T app sh -c 'while ! npx prisma db push 2>/dev/null; do sleep 1; done'"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
