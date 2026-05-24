@@ -5,7 +5,11 @@ import { Todo } from "@/lib/types";
 import { TodoForm } from "@/components/TodoForm";
 import { TodoList } from "@/components/TodoList";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+};
 
 export default function Home() {
   const { data, error, mutate } = useSWR<{ todos: Todo[] }>("/api/todos", fetcher);

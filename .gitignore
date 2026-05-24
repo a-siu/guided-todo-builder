@@ -3,3 +3,5 @@ node_modules/
 .env
 .env.local
 *.tsbuildinfo
+next-env.d.ts
+intelligent todo prediction system.txt

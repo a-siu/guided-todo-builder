@@ -1,20 +1,21 @@
+import { Mock, vi } from "vitest";
 import { auditService } from "../audit.service";
 import { todoRepository } from "@/lib/repositories/todo.repository";
 import { UpdateTodoInput } from "@/lib/types";
 
-jest.mock("@/lib/repositories/todo.repository", () => ({
+vi.mock("@/lib/repositories/todo.repository", () => ({
   todoRepository: {
-    findDeletedTodos: jest.fn(),
-    findAllTodos: jest.fn(),
-    updateTodo: jest.fn(),
+    findDeletedTodos: vi.fn(),
+    findAllTodos: vi.fn(),
+    updateTodo: vi.fn(),
   },
 }));
 
 describe("auditService", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it("gets deleted todos", async () => {
-    (todoRepository.findDeletedTodos as jest.Mock).mockResolvedValue([
+    (todoRepository.findDeletedTodos as Mock).mockResolvedValue([
       { id: "1", deletedAt: new Date() },
     ]);
     const result = await auditService.getDeletedTodos();
@@ -23,13 +24,13 @@ describe("auditService", () => {
   });
 
   it("gets all todos including deleted", async () => {
-    (todoRepository.findAllTodos as jest.Mock).mockResolvedValue([{ id: "1" }, { id: "2" }]);
+    (todoRepository.findAllTodos as Mock).mockResolvedValue([{ id: "1" }, { id: "2" }]);
     const result = await auditService.getAllTodos();
     expect(result).toHaveLength(2);
   });
 
   it("soft deletes a todo", async () => {
-    (todoRepository.updateTodo as jest.Mock).mockImplementation(
+    (todoRepository.updateTodo as Mock).mockImplementation(
       async       (_id: string, data: UpdateTodoInput) => ({
         id: "1",
         ...data,

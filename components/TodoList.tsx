@@ -10,7 +10,7 @@ interface TodoListProps {
 }
 
 export function TodoList({ todos, onToggle, onDelete }: TodoListProps) {
-  if (todos.length === 0) {
+  if (!todos || todos.length === 0) {
     return <p className="text-gray-500 text-center py-4">No todos yet.</p>;
   }
 

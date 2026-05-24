@@ -1,23 +1,24 @@
 import { GET, POST } from "../route";
 import { GET as GET_BY_ID, PUT, DELETE } from "../[id]/route";
 
-jest.mock("@/lib/prisma", () => ({
+import { Mock, vi } from "vitest";
+import { prisma } from "@/lib/prisma";
+import { cacheService } from "@/lib/services/cache.service";
+
+vi.mock("@/lib/prisma", () => ({
   prisma: {
     todo: {
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
     },
   },
 }));
 
-import { prisma } from "@/lib/prisma";
-import { cacheService } from "@/lib/services/cache.service";
-
 const mockJson = (data: unknown) => {
   let consumed = false;
-  return jest.fn().mockImplementation(async () => {
+  return vi.fn().mockImplementation(async () => {
     if (consumed) {
       throw new Error("Body already consumed");
     }
@@ -27,7 +28,7 @@ const mockJson = (data: unknown) => {
 };
 
 const mockNextRequest = (body?: unknown) => {
-  const jsonFn = body !== undefined ? mockJson(body) : jest.fn();
+  const jsonFn = body !== undefined ? mockJson(body) : vi.fn();
   return {
     json: jsonFn,
     url: "http://localhost:3000/api/todos",
@@ -35,7 +36,7 @@ const mockNextRequest = (body?: unknown) => {
 };
 
 const mockNextRequestWithParams = (_url: string, body?: unknown) => {
-  const jsonFn = body !== undefined ? mockJson(body) : jest.fn();
+  const jsonFn = body !== undefined ? mockJson(body) : vi.fn();
   return {
     json: jsonFn,
   } as any;
@@ -53,14 +54,14 @@ const mockTodo = (overrides = {}) => ({
 
 describe("E2E: Save and Load Todo Flow", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     cacheService.clear();
   });
 
   describe("Save: POST /api/todos", () => {
     it("creates a todo and returns it with 201", async () => {
       const created = mockTodo({ id: "clx001", title: "Write tests" });
-      (prisma.todo.create as jest.Mock).mockResolvedValue(created);
+      (prisma.todo.create as Mock).mockResolvedValue(created);
 
       const req = mockNextRequest({ title: "Write tests" });
       const response = await POST(req);
@@ -98,7 +99,7 @@ describe("E2E: Save and Load Todo Flow", () => {
         mockTodo({ id: "clx001", title: "First" }),
         mockTodo({ id: "clx002", title: "Second" }),
       ];
-      (prisma.todo.findMany as jest.Mock).mockResolvedValue(todos);
+      (prisma.todo.findMany as Mock).mockResolvedValue(todos);
 
       const req = mockNextRequest();
       const response = await GET(req);
@@ -110,7 +111,7 @@ describe("E2E: Save and Load Todo Flow", () => {
     });
 
     it("returns only active todos by default (excludes soft-deleted)", async () => {
-      (prisma.todo.findMany as jest.Mock).mockResolvedValue([
+      (prisma.todo.findMany as Mock).mockResolvedValue([
         mockTodo({ id: "clx001" }),
       ]);
 
@@ -124,12 +125,12 @@ describe("E2E: Save and Load Todo Flow", () => {
     });
 
     it("includes deleted todos when includeDeleted=true", async () => {
-      (prisma.todo.findMany as jest.Mock).mockResolvedValue([
+      (prisma.todo.findMany as Mock).mockResolvedValue([
         mockTodo({ id: "clx001" }),
         mockTodo({ id: "clx002", deletedAt: new Date() }),
       ]);
 
-      const req = { json: jest.fn(), url: "http://localhost:3000/api/todos?includeDeleted=true" } as any;
+      const req = { json: vi.fn(), url: "http://localhost:3000/api/todos?includeDeleted=true" } as any;
       const response = await GET(req);
 
       const body = await response.json();
@@ -137,7 +138,7 @@ describe("E2E: Save and Load Todo Flow", () => {
     });
 
     it("returns empty array when no todos exist", async () => {
-      (prisma.todo.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.todo.findMany as Mock).mockResolvedValue([]);
 
       const req = mockNextRequest();
       const response = await GET(req);
@@ -149,7 +150,7 @@ describe("E2E: Save and Load Todo Flow", () => {
 
   describe("Full lifecycle: create → load → toggle → load → delete → load", () => {
     it("creates, reads, updates, and soft-deletes a todo", async () => {
-      (prisma.todo.create as jest.Mock).mockResolvedValue(
+      (prisma.todo.create as Mock).mockResolvedValue(
         mockTodo({ id: "clx001", title: "Learn testing", completed: false })
       );
 
@@ -157,7 +158,7 @@ describe("E2E: Save and Load Todo Flow", () => {
       const createRes = await POST(createReq);
       expect(createRes.status).toBe(201);
 
-      (prisma.todo.findMany as jest.Mock).mockResolvedValue([
+      (prisma.todo.findMany as Mock).mockResolvedValue([
         mockTodo({ id: "clx001", title: "Learn testing" }),
       ]);
 
@@ -167,10 +168,10 @@ describe("E2E: Save and Load Todo Flow", () => {
       expect(loadBody.todos).toHaveLength(1);
       expect(loadBody.todos[0].title).toBe("Learn testing");
 
-      (prisma.todo.findUnique as jest.Mock).mockResolvedValue(
+      (prisma.todo.findUnique as Mock).mockResolvedValue(
         mockTodo({ id: "clx001", title: "Learn testing" })
       );
-      (prisma.todo.update as jest.Mock).mockResolvedValue(
+      (prisma.todo.update as Mock).mockResolvedValue(
         mockTodo({ id: "clx001", title: "Learn testing", completed: true })
       );
 
@@ -179,10 +180,10 @@ describe("E2E: Save and Load Todo Flow", () => {
       const toggleBody = await toggleRes.json();
       expect(toggleBody.todo.completed).toBe(true);
 
-      (prisma.todo.findUnique as jest.Mock).mockResolvedValue(
+      (prisma.todo.findUnique as Mock).mockResolvedValue(
         mockTodo({ id: "clx001", title: "Learn testing", completed: true })
       );
-      (prisma.todo.update as jest.Mock).mockResolvedValue(
+      (prisma.todo.update as Mock).mockResolvedValue(
         mockTodo({ id: "clx001", title: "Learn testing", completed: true, deletedAt: new Date() })
       );
 
@@ -191,7 +192,7 @@ describe("E2E: Save and Load Todo Flow", () => {
       const deleteBody = await deleteRes.json();
       expect(deleteBody.todo.deletedAt).not.toBeNull();
 
-      (prisma.todo.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.todo.findMany as Mock).mockResolvedValue([]);
 
       const finalLoadReq = mockNextRequest();
       const finalLoadRes = await GET(finalLoadReq);
@@ -202,7 +203,7 @@ describe("E2E: Save and Load Todo Flow", () => {
 
   describe("GET /api/todos/:id", () => {
     it("returns a single todo by id", async () => {
-      (prisma.todo.findUnique as jest.Mock).mockResolvedValue(
+      (prisma.todo.findUnique as Mock).mockResolvedValue(
         mockTodo({ id: "clx001" })
       );
 
@@ -215,7 +216,7 @@ describe("E2E: Save and Load Todo Flow", () => {
     });
 
     it("returns 404 for non-existent todo", async () => {
-      (prisma.todo.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.todo.findUnique as Mock).mockResolvedValue(null);
 
       const req = mockNextRequestWithParams("");
       const response = await GET_BY_ID(req, { params: { id: "nonexistent" } });
@@ -228,8 +229,8 @@ describe("E2E: Save and Load Todo Flow", () => {
 
   describe("PUT /api/todos/:id", () => {
     it("updates todo title", async () => {
-      (prisma.todo.findUnique as jest.Mock).mockResolvedValue(mockTodo());
-      (prisma.todo.update as jest.Mock).mockResolvedValue(
+      (prisma.todo.findUnique as Mock).mockResolvedValue(mockTodo());
+      (prisma.todo.update as Mock).mockResolvedValue(
         mockTodo({ title: "Updated title" })
       );
 
@@ -241,7 +242,7 @@ describe("E2E: Save and Load Todo Flow", () => {
     });
 
     it("returns 404 when updating non-existent todo", async () => {
-      (prisma.todo.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.todo.findUnique as Mock).mockResolvedValue(null);
 
       const req = mockNextRequestWithParams("", { title: "Nope" });
       const response = await PUT(req, { params: { id: "missing" } });
@@ -252,8 +253,8 @@ describe("E2E: Save and Load Todo Flow", () => {
 
   describe("DELETE /api/todos/:id", () => {
     it("soft-deletes a todo", async () => {
-      (prisma.todo.findUnique as jest.Mock).mockResolvedValue(mockTodo());
-      (prisma.todo.update as jest.Mock).mockResolvedValue(
+      (prisma.todo.findUnique as Mock).mockResolvedValue(mockTodo());
+      (prisma.todo.update as Mock).mockResolvedValue(
         mockTodo({ deletedAt: new Date() })
       );
 
@@ -265,7 +266,7 @@ describe("E2E: Save and Load Todo Flow", () => {
     });
 
     it("returns 404 when deleting non-existent todo", async () => {
-      (prisma.todo.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.todo.findUnique as Mock).mockResolvedValue(null);
 
       const req = mockNextRequestWithParams("");
       const response = await DELETE(req, { params: { id: "missing" } });

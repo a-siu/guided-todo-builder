@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import { POST } from "../route";
 
 describe("POST /api/todos", () => {
