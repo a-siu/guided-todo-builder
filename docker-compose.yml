@@ -15,5 +15,21 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/todo_app"
+      NEXTAUTH_SECRET: "HcVEzbOfL8jHfkSYPQ9Tb6GwUoA946yqGOLs+nDbEzc="
+      NEXTAUTH_URL: "http://localhost:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+
 volumes:
   pgdata:

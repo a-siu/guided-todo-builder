@@ -9,15 +9,14 @@
 
 ## Dev Setup (order matters)
 ```bash
-npm run db:up       # docker compose up -d postgres
-npm run db:push     # prisma db push (apply schema)
-npm run dev         # next dev (locally, not in Docker)
+npm run db:setup    # docker compose up -d postgres, wait, then prisma db push
+npm run dev         # next dev
 ```
 
-Postgres-only: `npm run db:up` then `npm run db:push` if schema changed.
+If already running: `npm run db:up` then `npm run db:push` if schema changed.
 
 Single commands:
-- `npm test` — vitest run (all 70 tests)
+- `npm test` — vitest run (all 46 tests)
 - `npm run build` — prisma generate + next build
 - `npm run db:generate` — prisma generate only
 
