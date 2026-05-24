@@ -11,4 +11,4 @@ COPY . .
 RUN npx prisma generate
 
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma db push && npm run dev"]
+CMD ["sh", "-c", "npx prisma db push --force-reset && npm run dev"]

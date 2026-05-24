@@ -1,7 +1,5 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { userRepository } from "@/lib/repositories/user.repository";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -14,6 +12,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null;
 
+        const { userRepository } = await import("@/lib/repositories/user.repository");
+        const bcrypt = await import("bcryptjs");
         const user = await userRepository.findByUsername(credentials.username as string);
         if (!user) return null;
 
