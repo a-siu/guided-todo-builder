@@ -25,11 +25,11 @@ export const patternService = {
 
     const tokens = cleaned.split(/\s+/).filter(Boolean);
     const terms = tokens.filter((t) => !STOP_WORDS.has(t) && t.length > 0);
-    const stemmedTerms = [...new Set(terms.map(simpleStem).filter(Boolean))].sort();
+    const stems = Array.from(new Set(terms.map(simpleStem).filter(Boolean))).sort();
 
-    const hash = createHash("sha256").update(stemmedTerms.join(",") || cleaned).digest("hex").slice(0, 16);
+    const hash = createHash("sha256").update(stems.join(",") || cleaned).digest("hex").slice(0, 16);
 
-    return { hash, terms: [...new Set(terms)], stemmedTerms };
+    return { hash, terms: Array.from(new Set(terms)), stemmedTerms: stems };
   },
 
   async upsertPattern(userId: string, rawTitle: string): Promise<Pattern> {

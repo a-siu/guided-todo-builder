@@ -52,7 +52,7 @@ export const predictionService = {
       }
     }
 
-    const sorted = [...scored.entries()]
+    const sorted = Array.from(scored.entries())
       .sort((a, b) => b[1].score - a[1].score)
       .slice(0, 3)
       .map(([patternId, data]) => ({

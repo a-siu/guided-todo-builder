@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { v7 as uuidv7 } from "uuidv7";
+import { uuidv7 } from "uuidv7";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 

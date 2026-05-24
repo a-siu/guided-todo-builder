@@ -41,21 +41,24 @@ export const predictionRepository = {
   },
 
   // Cluster
-  async findClusters(userId: string): Promise<Cluster[]> {
-    return prisma.cluster.findMany({ where: { userId } });
-  },
-
   async createCluster(userId: string, centroid: Record<string, number>): Promise<Cluster> {
-    return prisma.cluster.create({
+    const result = await prisma.cluster.create({
       data: { userId, centroid, memberCount: 1 },
-    });
+    }) as Cluster;
+    return result;
   },
 
   async updateClusterCentroid(clusterId: string, centroid: Record<string, number>, memberCount: number): Promise<Cluster> {
-    return prisma.cluster.update({
+    const result = await prisma.cluster.update({
       where: { id: clusterId },
       data: { centroid, memberCount },
-    });
+    }) as Cluster;
+    return result;
+  },
+
+  async findClusters(userId: string): Promise<Cluster[]> {
+    const results = await prisma.cluster.findMany({ where: { userId } });
+    return results.map((c) => ({ ...c, centroid: c.centroid as Record<string, number> }));
   },
 
   async assignPatternToCluster(patternId: string, clusterId: string): Promise<void> {

@@ -54,7 +54,7 @@ export const tfidfService = {
       const cluster = clusters.find((c) => c.id === bestClusterId)!;
       const newCount = (cluster.memberCount ?? 1) + 1;
       const newCentroid: Record<string, number> = {};
-      for (const term of new Set([...Object.keys(centroid), ...Object.keys(vector)])) {
+      for (const term of Array.from(new Set([...Object.keys(centroid), ...Object.keys(vector)]))) {
         const oldW = centroid[term] ?? 0;
         const newW = vector[term] ?? 0;
         newCentroid[term] = oldW + (newW - oldW) / newCount;
