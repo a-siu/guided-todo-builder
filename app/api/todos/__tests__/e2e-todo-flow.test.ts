@@ -10,6 +10,7 @@ vi.mock("@/lib/prisma", () => ({
     todo: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
@@ -20,6 +21,36 @@ vi.mock("@/lib/auth/config", () => ({
   auth: vi.fn(),
 }));
 
+vi.mock("@/lib/services/pattern.service", () => ({
+  patternService: {
+    upsertPattern: vi.fn(),
+    normalizeTitle: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/services/temporal.service", () => ({
+  temporalService: {
+    recordTime: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/services/transition.service", () => ({
+  transitionService: {
+    recordTransition: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/services/tfidf.service", () => ({
+  tfidfService: {
+    updateTermDf: vi.fn(),
+    assignToCluster: vi.fn(),
+  },
+}));
+
+import { patternService } from "@/lib/services/pattern.service";
+import { temporalService } from "@/lib/services/temporal.service";
+import { tfidfService } from "@/lib/services/tfidf.service";
+import { transitionService } from "@/lib/services/transition.service";
 import { auth } from "@/lib/auth/config";
 
 const userId = "test-user-id";
@@ -66,6 +97,8 @@ describe("E2E: Save and Load Todo Flow", () => {
     vi.clearAllMocks();
     cacheService.clear();
     (auth as Mock).mockResolvedValue({ user: { id: userId } });
+    (patternService.upsertPattern as Mock).mockResolvedValue({ id: "pat-1" });
+    (patternService.normalizeTitle as Mock).mockReturnValue({ hash: "abc", terms: [], stemmedTerms: [] });
   });
 
   describe("Save: POST /api/todos", () => {

@@ -1,6 +1,10 @@
 import { todoRepository } from "@/lib/repositories/todo.repository";
 import { cacheService } from "./cache.service";
 import { auditService } from "./audit.service";
+import { patternService } from "./pattern.service";
+import { temporalService } from "./temporal.service";
+import { transitionService } from "./transition.service";
+import { tfidfService } from "./tfidf.service";
 import { validateTodoInput, validateUpdateInput } from "@/lib/validation/todo.validation";
 import { CreateTodoInput, UpdateTodoInput, ApiResponse, Todo } from "@/lib/types";
 
@@ -27,6 +31,19 @@ export const todoService = {
 
     const todo = await todoRepository.createTodo(input, userId);
     cacheService.invalidate(`todos:${userId}`);
+
+    const pattern = await patternService.upsertPattern(userId, todo.title);
+    await temporalService.recordTime(pattern.id, todo.createdAt);
+    const { stemmedTerms } = patternService.normalizeTitle(todo.title);
+    await tfidfService.updateTermDf(userId, stemmedTerms);
+    await tfidfService.assignToCluster(userId, pattern.id, stemmedTerms);
+
+    const previous = await todoRepository.findMostRecentTodo(userId, todo.id);
+    if (previous) {
+      const prevPattern = await patternService.upsertPattern(userId, previous.title);
+      await transitionService.recordTransition(userId, prevPattern.id, pattern.id);
+    }
+
     return { todo };
   },
 
