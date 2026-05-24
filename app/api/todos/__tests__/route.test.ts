@@ -1,5 +1,9 @@
-import { vi } from "vitest";
+import { Mock, vi } from "vitest";
 import { POST } from "../route";
+
+vi.mock("@/lib/auth/config", () => ({
+  auth: vi.fn().mockResolvedValue({ user: { id: "test-user" } }),
+}));
 
 describe("POST /api/todos", () => {
   it("returns 400 for malformed JSON", async () => {

@@ -5,6 +5,7 @@ export interface Todo {
   deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  userId: string;
 }
 
 export interface CreateTodoInput {
@@ -20,5 +21,20 @@ export interface UpdateTodoInput {
 export interface ApiResponse<T> {
   todo?: T;
   todos?: T[];
+  error?: string;
+}
+
+export interface AuthUser {
+  id: string;
+  username: string;
+}
+
+export interface RegisterInput {
+  username: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  user?: AuthUser;
   error?: string;
 }

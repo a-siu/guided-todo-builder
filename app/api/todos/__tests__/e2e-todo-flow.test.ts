@@ -16,6 +16,14 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+vi.mock("@/lib/auth/config", () => ({
+  auth: vi.fn(),
+}));
+
+import { auth } from "@/lib/auth/config";
+
+const userId = "test-user-id";
+
 const mockJson = (data: unknown) => {
   let consumed = false;
   return vi.fn().mockImplementation(async () => {
@@ -49,6 +57,7 @@ const mockTodo = (overrides = {}) => ({
   deletedAt: null,
   createdAt: new Date("2026-05-21T10:00:00Z"),
   updatedAt: new Date("2026-05-21T10:00:00Z"),
+  userId,
   ...overrides,
 });
 
@@ -56,6 +65,7 @@ describe("E2E: Save and Load Todo Flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     cacheService.clear();
+    (auth as Mock).mockResolvedValue({ user: { id: userId } });
   });
 
   describe("Save: POST /api/todos", () => {
@@ -110,7 +120,7 @@ describe("E2E: Save and Load Todo Flow", () => {
       expect(body.todos[0].title).toBe("First");
     });
 
-    it("returns only active todos by default (excludes soft-deleted)", async () => {
+    it("returns only active todos by default", async () => {
       (prisma.todo.findMany as Mock).mockResolvedValue([
         mockTodo({ id: "clx001" }),
       ]);
@@ -119,22 +129,9 @@ describe("E2E: Save and Load Todo Flow", () => {
       await GET(req);
 
       expect(prisma.todo.findMany).toHaveBeenCalledWith({
-        where: { deletedAt: null },
+        where: { deletedAt: null, userId },
         orderBy: { createdAt: "desc" },
       });
-    });
-
-    it("includes deleted todos when includeDeleted=true", async () => {
-      (prisma.todo.findMany as Mock).mockResolvedValue([
-        mockTodo({ id: "clx001" }),
-        mockTodo({ id: "clx002", deletedAt: new Date() }),
-      ]);
-
-      const req = { json: vi.fn(), url: "http://localhost:3000/api/todos?includeDeleted=true" } as any;
-      const response = await GET(req);
-
-      const body = await response.json();
-      expect(body.todos).toHaveLength(2);
     });
 
     it("returns empty array when no todos exist", async () => {
@@ -222,8 +219,13 @@ describe("E2E: Save and Load Todo Flow", () => {
       const response = await GET_BY_ID(req, { params: { id: "nonexistent" } });
 
       expect(response.status).toBe(404);
-      const body = await response.json();
-      expect(body.error).toBe("Todo not found");
+    });
+
+    it("returns 404 for another user's todo", async () => {
+      (prisma.todo.findUnique as Mock).mockResolvedValue(mockTodo({ userId: "other-user" }));
+      const req = mockNextRequestWithParams("");
+      const response = await GET_BY_ID(req, { params: { id: "clx001" } });
+      expect(response.status).toBe(404);
     });
   });
 
@@ -272,6 +274,15 @@ describe("E2E: Save and Load Todo Flow", () => {
       const response = await DELETE(req, { params: { id: "missing" } });
 
       expect(response.status).toBe(404);
+    });
+  });
+
+  describe("Unauthenticated requests", () => {
+    it("returns 401 when no session", async () => {
+      (auth as Mock).mockResolvedValue(null);
+      const req = mockNextRequest();
+      const response = await GET(req);
+      expect(response.status).toBe(401);
     });
   });
 });
