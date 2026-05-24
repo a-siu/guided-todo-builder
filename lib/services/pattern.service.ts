@@ -27,7 +27,7 @@ export const patternService = {
     const terms = tokens.filter((t) => !STOP_WORDS.has(t) && t.length > 0);
     const stemmedTerms = [...new Set(terms.map(simpleStem).filter(Boolean))].sort();
 
-    const hash = createHash("sha256").update(stemmedTerms.join(",") || title).digest("hex").slice(0, 16);
+    const hash = createHash("sha256").update(stemmedTerms.join(",") || cleaned).digest("hex").slice(0, 16);
 
     return { hash, terms: [...new Set(terms)], stemmedTerms };
   },
