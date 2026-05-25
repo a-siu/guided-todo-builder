@@ -32,11 +32,25 @@ vi.mock("@/lib/services/transition.service", () => ({
   },
 }));
 
+vi.mock("@/lib/services/tfidf.service", () => ({
+  tfidfService: {
+    computeTfIdf: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/repositories/cluster.repository", () => ({
+  clusterRepository: {
+    findClusters: vi.fn(),
+  },
+}));
+
 import { predictionService } from "@/lib/services/prediction.service";
 import { temporalService } from "@/lib/services/temporal.service";
 import { transitionService } from "@/lib/services/transition.service";
 import { patternRepository } from "@/lib/repositories/pattern.repository";
 import { patternService } from "@/lib/services/pattern.service";
+import { tfidfService } from "@/lib/services/tfidf.service";
+import { clusterRepository } from "@/lib/repositories/cluster.repository";
 
 describe("predictionService", () => {
   beforeEach(() => {
@@ -153,5 +167,65 @@ describe("predictionService", () => {
 
     expect(results).toEqual([]);
     expect(temporalService.getTopForTimeSlot).toHaveBeenCalled();
+  });
+
+  it("augments results with top cluster member from best match", async () => {
+    const mockPatterns = [
+      { id: "pat-milk", userId: "user-1", titleHash: "a", rawTitle: "buy milk", frequency: 5, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+      { id: "pat-bread", userId: "user-1", titleHash: "b", rawTitle: "buy bread", frequency: 3, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+      { id: "pat-eggs", userId: "user-1", titleHash: "c", rawTitle: "get eggs", frequency: 2, clusterId: null, createdAt: new Date(), updatedAt: new Date() },
+    ];
+    (patternRepository.getAllPatterns as Mock).mockResolvedValue(mockPatterns);
+    (tfidfService.computeTfIdf as Mock).mockResolvedValue({ milk: 0.5, buy: 0.3 });
+    (clusterRepository.findClusters as Mock).mockResolvedValue([
+      { id: "cl-1", userId: "user-1", centroid: { milk: 0.5, buy: 0.3, bread: 0.3 }, memberCount: 2, createdAt: new Date(), updatedAt: new Date() },
+    ]);
+    (patternRepository.findPatternsByCluster as Mock).mockResolvedValue([
+      { id: "pat-bread", userId: "user-1", titleHash: "b", rawTitle: "buy bread", frequency: 3, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+    ]);
+
+    const results = await predictionService.predict("user-1", { query: "mil" });
+
+    expect(results).toHaveLength(2);
+    expect(results.map(r => r.rawTitle)).toContain("buy milk");
+    expect(results.map(r => r.rawTitle)).toContain("buy bread");
+    expect(results.find(r => r.rawTitle === "buy bread")?.reason).toBe("cluster: buy milk");
+  });
+
+  it("does not augment when best match has no cluster", async () => {
+    const mockPatterns = [
+      { id: "pat-milk", userId: "user-1", titleHash: "a", rawTitle: "buy milk", frequency: 5, clusterId: null, createdAt: new Date(), updatedAt: new Date() },
+      { id: "pat-bread", userId: "user-1", titleHash: "b", rawTitle: "buy bread", frequency: 3, clusterId: null, createdAt: new Date(), updatedAt: new Date() },
+    ];
+    (patternRepository.getAllPatterns as Mock).mockResolvedValue(mockPatterns);
+    (tfidfService.computeTfIdf as Mock).mockResolvedValue({ milk: 0.5 });
+    (clusterRepository.findClusters as Mock).mockResolvedValue([]);
+
+    const results = await predictionService.predict("user-1", { query: "mil" });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].rawTitle).toBe("buy milk");
+  });
+
+  it("does not augment when all cluster members are already in top 5", async () => {
+    const mockPatterns = [
+      { id: "pat-milk", userId: "user-1", titleHash: "a", rawTitle: "buy milk", frequency: 5, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+      { id: "pat-bread", userId: "user-1", titleHash: "b", rawTitle: "buy bread", frequency: 3, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+    ];
+    (patternRepository.getAllPatterns as Mock).mockResolvedValue(mockPatterns);
+    (tfidfService.computeTfIdf as Mock).mockResolvedValue({ milk: 0.6, buy: 0.4 });
+    (clusterRepository.findClusters as Mock).mockResolvedValue([
+      { id: "cl-1", userId: "user-1", centroid: { milk: 0.6, buy: 0.4 }, memberCount: 2, createdAt: new Date(), updatedAt: new Date() },
+    ]);
+    (patternRepository.findPatternsByCluster as Mock).mockResolvedValue([
+      { id: "pat-milk", userId: "user-1", titleHash: "a", rawTitle: "buy milk", frequency: 5, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+      { id: "pat-bread", userId: "user-1", titleHash: "b", rawTitle: "buy bread", frequency: 3, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+    ]);
+
+    const results = await predictionService.predict("user-1", { query: "buy" });
+
+    expect(results).toHaveLength(2);
+    expect(results.map(r => r.rawTitle)).toEqual(["buy milk", "buy bread"]);
+    expect(results.every(r => r.reason === "query match")).toBe(true);
   });
 });

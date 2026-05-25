@@ -1,3 +1,127 @@
+# Cluster-Augmented Query Suggestions — Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Augment substring-matching suggestions with one semantically related suggestion from the best match's TF-IDF cluster.
+
+**Architecture:** After computing query results, take the best match, compute its TF-IDF vector, find the nearest cluster via min-intersection centroid scoring, pull that cluster's top member not already in results, score it using the best match's overlap count + the member's frequency, merge into top 5.
+
+**Tech Stack:** TypeScript, Vitest 3 (mocked)
+
+---
+
+### Task 1: Cluster-augmented query predictions
+
+**Files:**
+- Modify: `lib/services/prediction.service.ts`
+- Modify: `lib/services/__tests__/prediction.service.test.ts`
+
+- [ ] **Step 1: Add mocks for tfidfService and clusterRepository in the test file**
+
+Add after the `vi.mock("@/lib/services/transition.service"...)` block in `prediction.service.test.ts`:
+
+```typescript
+vi.mock("@/lib/services/tfidf.service", () => ({
+  tfidfService: {
+    computeTfIdf: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/repositories/cluster.repository", () => ({
+  clusterRepository: {
+    findClusters: vi.fn(),
+  },
+}));
+```
+
+Add these imports after `import { patternRepository }...`:
+
+```typescript
+import { tfidfService } from "@/lib/services/tfidf.service";
+import { clusterRepository } from "@/lib/repositories/cluster.repository";
+```
+
+- [ ] **Step 2: Add test for cluster-augmented suggestion appearing**
+
+Add after the existing `"falls back to blended predictions..."` test:
+
+```typescript
+it("augments results with top cluster member from best match", async () => {
+  const mockPatterns = [
+    { id: "pat-milk", userId: "user-1", titleHash: "a", rawTitle: "buy milk", frequency: 5, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+    { id: "pat-bread", userId: "user-1", titleHash: "b", rawTitle: "buy bread", frequency: 3, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+    { id: "pat-eggs", userId: "user-1", titleHash: "c", rawTitle: "get eggs", frequency: 2, clusterId: null, createdAt: new Date(), updatedAt: new Date() },
+  ];
+  (patternRepository.getAllPatterns as Mock).mockResolvedValue(mockPatterns);
+  (tfidfService.computeTfIdf as Mock).mockResolvedValue({ milk: 0.5, buy: 0.3 });
+  (clusterRepository.findClusters as Mock).mockResolvedValue([
+    { id: "cl-1", userId: "user-1", centroid: { milk: 0.4, bread: 0.3 }, memberCount: 2, createdAt: new Date(), updatedAt: new Date() },
+  ]);
+
+  const results = await predictionService.predict("user-1", { query: "mil" });
+
+  expect(results).toHaveLength(2);
+  expect(results.map(r => r.rawTitle)).toContain("buy milk");
+  expect(results.map(r => r.rawTitle)).toContain("buy bread");
+  expect(results.find(r => r.rawTitle === "buy bread")?.reason).toBe("cluster: buy milk");
+});
+```
+
+- [ ] **Step 3: Add test for no cluster on best match (no augmentation)**
+
+```typescript
+it("does not augment when best match has no cluster", async () => {
+  const mockPatterns = [
+    { id: "pat-milk", userId: "user-1", titleHash: "a", rawTitle: "buy milk", frequency: 5, clusterId: null, createdAt: new Date(), updatedAt: new Date() },
+    { id: "pat-bread", userId: "user-1", titleHash: "b", rawTitle: "buy bread", frequency: 3, clusterId: null, createdAt: new Date(), updatedAt: new Date() },
+  ];
+  (patternRepository.getAllPatterns as Mock).mockResolvedValue(mockPatterns);
+  (tfidfService.computeTfIdf as Mock).mockResolvedValue({ milk: 0.5 });
+  (clusterRepository.findClusters as Mock).mockResolvedValue([]);
+
+  const results = await predictionService.predict("user-1", { query: "mil" });
+
+  expect(results).toHaveLength(1);
+  expect(results[0].rawTitle).toBe("buy milk");
+});
+```
+
+- [ ] **Step 4: Add test for all cluster members already in results**
+
+```typescript
+it("does not augment when all cluster members are already in top 5", async () => {
+  const mockPatterns = [
+    { id: "pat-milk", userId: "user-1", titleHash: "a", rawTitle: "buy milk", frequency: 5, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+    { id: "pat-bread", userId: "user-1", titleHash: "b", rawTitle: "buy bread", frequency: 3, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+  ];
+  (patternRepository.getAllPatterns as Mock).mockResolvedValue(mockPatterns);
+  (tfidfService.computeTfIdf as Mock).mockResolvedValue({ milk: 0.5 });
+  (clusterRepository.findClusters as Mock).mockResolvedValue([
+    { id: "cl-1", userId: "user-1", centroid: { milk: 0.5, bread: 0.3 }, memberCount: 2, createdAt: new Date(), updatedAt: new Date() },
+  ]);
+  (patternRepository.findPatternsByCluster as Mock).mockResolvedValue([
+    { id: "pat-milk", userId: "user-1", titleHash: "a", rawTitle: "buy milk", frequency: 5, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+    { id: "pat-bread", userId: "user-1", titleHash: "b", rawTitle: "buy bread", frequency: 3, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
+  ]);
+
+  const results = await predictionService.predict("user-1", { query: "mil" });
+
+  expect(results).toHaveLength(2);
+  expect(results.map(r => r.rawTitle)).toEqual(["buy milk", "buy bread"]);
+  expect(results.every(r => r.reason === "query match")).toBe(true);
+});
+```
+
+- [ ] **Step 5: Run tests to verify they fail**
+
+Run: `npx vitest run lib/services/__tests__/prediction.service.test.ts`
+Expected: 3 new tests FAIL (existing 8 pass)
+
+- [ ] **Step 6: Modify predictWithQuery to add cluster augmentation**
+
+Replace `lib/services/prediction.service.ts` with:
+
+```typescript
 import { temporalService } from "@/lib/services/temporal.service";
 import { transitionService } from "@/lib/services/transition.service";
 import { patternRepository } from "@/lib/repositories/pattern.repository";
@@ -122,7 +246,6 @@ export const predictionService = {
         const { stemmedTerms } = patternService.normalizeTitle(bestPattern.rawTitle);
         const vector = await tfidfService.computeTfIdf(userId, stemmedTerms);
         const clusters = await clusterRepository.findClusters(userId);
-        if (!clusters) return scored.map(({ overlapCount, ...p }) => ({ ...p, score: Math.round(p.score * 100) / 100 }));
 
         let bestClusterId: string | null = null;
         let bestScore = 0;
@@ -169,3 +292,21 @@ export const predictionService = {
     }));
   },
 };
+```
+
+- [ ] **Step 7: Run tests to verify they pass**
+
+Run: `npx vitest run lib/services/__tests__/prediction.service.test.ts`
+Expected: All 11 tests PASS (8 old + 3 new)
+
+- [ ] **Step 8: Run full test suite**
+
+Run: `npx vitest run`
+Expected: All 115 tests pass (3 new across the suite)
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add lib/services/prediction.service.ts lib/services/__tests__/prediction.service.test.ts
+git commit -m "feat: augment query suggestions with top cluster member from best match"
+```
