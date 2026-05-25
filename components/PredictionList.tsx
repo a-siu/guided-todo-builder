@@ -11,28 +11,39 @@ const fetcher = async (url: string) => {
 
 interface PredictionListProps {
   onCreateTodo: (title: string) => Promise<void>;
+  query?: string;
 }
 
-export function PredictionList({ onCreateTodo }: PredictionListProps) {
-  const { data, error } = useSWR<{ predictions: Prediction[] }>(
-    "/api/predictions?minFrequency=3",
-    fetcher
-  );
+export function PredictionList({ onCreateTodo, query }: PredictionListProps) {
+  const swrKey = query ? `/api/predictions?query=${encodeURIComponent(query)}` : "/api/predictions";
+  const { data, error } = useSWR<{ predictions: Prediction[] }>(swrKey, fetcher);
 
   if (error) return null;
-  if (!data?.predictions?.length) return null;
+  if (!data) return null;
+
+  if (!data.predictions?.length) {
+    if (query) {
+      return (
+        <div className="text-sm text-gray-400 italic mb-4">
+          No matching suggestions
+        </div>
+      );
+    }
+    return (
+      <div className="text-sm text-gray-400 italic mb-4">
+        Create a few todos to see suggestions
+      </div>
+    );
+  }
 
   return (
-    <div className="w-48 shrink-0">
-      <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-        Suggestions
-      </h2>
-      <ul className="space-y-1">
+    <div className="mb-4">
+      <ul className="flex flex-wrap gap-2">
         {data.predictions.map((p) => (
           <li key={p.patternId}>
             <button
               onClick={() => onCreateTodo(p.rawTitle)}
-              className="w-full text-left text-sm px-2 py-1 rounded hover:bg-blue-50 hover:text-blue-700 text-gray-600 truncate transition-colors"
+              className="text-sm px-3 py-1 rounded-full border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
               title={`${p.rawTitle} (${p.reason})`}
             >
               {p.rawTitle}
