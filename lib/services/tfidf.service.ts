@@ -1,7 +1,6 @@
 import { patternRepository } from "@/lib/repositories/pattern.repository";
 import { clusterRepository } from "@/lib/repositories/cluster.repository";
-
-const CLUSTER_SIMILARITY_THRESHOLD = 0.6;
+import { CLUSTER_SIMILARITY_THRESHOLD} from "@/lib/config/common";
 
 export const tfidfService = {
   async updateTermDf(userId: string, stemmedTerms: string[]): Promise<void> {

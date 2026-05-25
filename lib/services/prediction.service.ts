@@ -5,14 +5,7 @@ import { clusterRepository } from "@/lib/repositories/cluster.repository";
 import { patternService } from "@/lib/services/pattern.service";
 import { tfidfService } from "@/lib/services/tfidf.service";
 import { Prediction, Pattern } from "@/lib/types";
-
-const WEIGHTS = {
-  temporal: 0.3,
-  sequential: 0.4,
-  semantic: 0.3,
-};
-
-const CLUSTER_SIMILARITY_THRESHOLD = 0.3;
+import { WEIGHTS, CLUSTER_SIMILARITY_THRESHOLD, TOP_K} from "@/lib/config/common";
 
 interface PredictOpts {
   currentPatternId?: string;
@@ -76,7 +69,7 @@ export const predictionService = {
     const sorted = Array.from(scored.entries())
       .filter(([, entry]) => opts.minFrequency === undefined || entry.frequency >= opts.minFrequency)
       .sort((a, b) => b[1].score - a[1].score)
-      .slice(0, 3)
+      .slice(0, TOP_K)
       .map(([patternId, data]) => ({
         patternId,
         rawTitle: data.title,
@@ -113,7 +106,7 @@ export const predictionService = {
       })
       .filter((p): p is ScoredEntry => p !== null)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 6);
+      .slice(0, TOP_K);
 
     if (scored.length > 0) {
       const best = scored[0];
@@ -157,7 +150,7 @@ export const predictionService = {
               overlapCount: best.overlapCount,
             });
             scored.sort((a, b) => b.score - a.score);
-            if (scored.length > 6) scored.pop();
+            if (scored.length > TOP_K) scored.pop();
           }
         }
       }
