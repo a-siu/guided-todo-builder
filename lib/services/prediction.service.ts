@@ -113,7 +113,7 @@ export const predictionService = {
       })
       .filter((p): p is ScoredEntry => p !== null)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
+      .slice(0, 6);
 
     if (scored.length > 0) {
       const best = scored[0];
@@ -157,7 +157,7 @@ export const predictionService = {
               overlapCount: best.overlapCount,
             });
             scored.sort((a, b) => b.score - a.score);
-            if (scored.length > 5) scored.pop();
+            if (scored.length > 6) scored.pop();
           }
         }
       }

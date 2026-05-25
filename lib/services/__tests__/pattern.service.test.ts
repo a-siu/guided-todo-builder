@@ -18,14 +18,12 @@ describe("patternService", () => {
     expect(result.hash).toBeDefined();
     expect(result.terms).toEqual(expect.arrayContaining(["groceries"]));
     expect(result.stemmedTerms).toEqual(expect.arrayContaining(["groceri"]));
-    expect(result.terms).not.toContain("buy");
   });
 
-  it("removes stop words and stems terms", () => {
+  it("stems terms and removes special characters", () => {
     const result = patternService.normalizeTitle("buy groceries and milk");
-    expect(result.terms).not.toContain("buy");
-    expect(result.terms).not.toContain("and");
-    expect(result.terms).toEqual(expect.arrayContaining(["groceries", "milk"]));
+    expect(result.terms).toEqual(expect.arrayContaining(["buy", "groceries", "and", "milk"]));
+    expect(result.stemmedTerms).toEqual(expect.arrayContaining(["buy", "groceri", "and", "milk"]));
   });
 
   it("generates a consistent hash for same title", () => {

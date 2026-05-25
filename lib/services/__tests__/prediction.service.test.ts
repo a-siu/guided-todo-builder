@@ -135,7 +135,7 @@ describe("predictionService", () => {
     expect(results[0].rawTitle).toBe("buy milk");
   });
 
-  it("scores by overlap count times 2 plus frequency and returns top 5 sorted descending", async () => {
+  it("scores by overlap count times 2 plus frequency and returns top 6 sorted descending", async () => {
     const mockPatterns = [
       { id: "pat-bread", userId: "user-1", titleHash: "b", rawTitle: "buy bread", frequency: 1, clusterId: null, createdAt: new Date(), updatedAt: new Date() },
       { id: "pat-milk", userId: "user-1", titleHash: "a", rawTitle: "buy milk", frequency: 10, clusterId: null, createdAt: new Date(), updatedAt: new Date() },
@@ -207,7 +207,7 @@ describe("predictionService", () => {
     expect(results[0].rawTitle).toBe("buy milk");
   });
 
-  it("does not augment when all cluster members are already in top 5", async () => {
+  it("does not augment when all cluster members are already in top 6", async () => {
     const mockPatterns = [
       { id: "pat-milk", userId: "user-1", titleHash: "a", rawTitle: "buy milk", frequency: 5, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
       { id: "pat-bread", userId: "user-1", titleHash: "b", rawTitle: "buy bread", frequency: 3, clusterId: "cl-1", createdAt: new Date(), updatedAt: new Date() },
