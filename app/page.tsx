@@ -1,6 +1,7 @@
 "use client";
 
-import useSWR from "swr";
+import { useState, useEffect } from "react";
+import useSWR, { mutate as globalMutate } from "swr";
 import { useSession, signOut } from "next-auth/react";
 import { Todo } from "@/lib/types";
 import { TodoForm } from "@/components/TodoForm";
@@ -17,6 +18,13 @@ const fetcher = async (url: string) => {
 function HomeContent() {
   const { data: session } = useSession();
   const { data, error, mutate } = useSWR<{ todos: Todo[] }>("/api/todos", fetcher);
+  const [inputValue, setInputValue] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(inputValue), 300);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
 
   const handleCreate = async (title: string) => {
     await fetch("/api/todos", {
@@ -25,6 +33,9 @@ function HomeContent() {
       body: JSON.stringify({ title }),
     });
     mutate();
+    globalMutate("/api/predictions");
+    setInputValue("");
+    setDebouncedQuery("");
   };
 
   const handleToggle = async (id: string) => {
@@ -61,12 +72,10 @@ function HomeContent() {
           </button>
         </div>
       </div>
-      <div className="flex gap-6">
-        <PredictionList onCreateTodo={handleCreate} />
-        <div className="flex-1 min-w-0">
-          <TodoForm onSubmit={handleCreate} />
-          <TodoList todos={data.todos} onToggle={handleToggle} onDelete={handleDelete} />
-        </div>
+      <div>
+        <TodoForm onSubmit={handleCreate} onInputChange={setInputValue} />
+        <PredictionList onCreateTodo={handleCreate} query={debouncedQuery} />
+        <TodoList todos={data.todos} onToggle={handleToggle} onDelete={handleDelete} />
       </div>
     </main>
   );
