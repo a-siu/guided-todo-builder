@@ -12,7 +12,7 @@ const WEIGHTS = {
   semantic: 0.3,
 };
 
-const CLUSTER_SIMILARITY_THRESHOLD = 0.6;
+const CLUSTER_SIMILARITY_THRESHOLD = 0.3;
 
 interface PredictOpts {
   currentPatternId?: string;
