@@ -1,6 +1,7 @@
 import { temporalService } from "@/lib/services/temporal.service";
 import { transitionService } from "@/lib/services/transition.service";
 import { patternRepository } from "@/lib/repositories/pattern.repository";
+import { patternService } from "@/lib/services/pattern.service";
 import { Prediction } from "@/lib/types";
 
 const WEIGHTS = {
@@ -14,10 +15,15 @@ interface PredictOpts {
   hour?: number;
   day?: number;
   minFrequency?: number;
+  query?: string;
 }
 
 export const predictionService = {
   async predict(userId: string, opts: PredictOpts): Promise<Prediction[]> {
+    if (opts.query) {
+      return this.predictWithQuery(userId, opts.query);
+    }
+
     const now = new Date();
     const hour = opts.hour ?? now.getUTCHours();
     const day = opts.day ?? now.getUTCDay();
@@ -31,8 +37,10 @@ export const predictionService = {
       scored.set(pattern.id, entry);
     }
 
-    if (opts.currentPatternId) {
-      const sequentials = await transitionService.getTopFollowUps(userId, opts.currentPatternId, 5);
+    const effectivePatternId = opts.currentPatternId ?? (await patternRepository.findMostRecentPattern(userId))?.id;
+
+    if (effectivePatternId) {
+      const sequentials = await transitionService.getTopFollowUps(userId, effectivePatternId, 5);
       for (const { toPattern, count } of sequentials) {
         const entry = scored.get(toPattern.id) ?? { title: toPattern.rawTitle, score: 0, frequency: toPattern.frequency, reasons: [] };
         entry.score += count * WEIGHTS.sequential;
@@ -40,11 +48,11 @@ export const predictionService = {
         scored.set(toPattern.id, entry);
       }
 
-      const currentPattern = await patternRepository.findPatternById(opts.currentPatternId);
+      const currentPattern = await patternRepository.findPatternById(effectivePatternId);
       if (currentPattern?.clusterId) {
         const semantics = await patternRepository.findPatternsByCluster(currentPattern.clusterId, 5);
         for (const pattern of semantics) {
-          if (pattern.id === opts.currentPatternId) continue;
+          if (pattern.id === effectivePatternId) continue;
           const entry = scored.get(pattern.id) ?? { title: pattern.rawTitle, score: 0, frequency: pattern.frequency, reasons: [] };
           entry.score += pattern.frequency * WEIGHTS.semantic;
           entry.reasons.push("semantic");
@@ -65,5 +73,37 @@ export const predictionService = {
       }));
 
     return sorted;
+  },
+
+  async predictWithQuery(userId: string, query: string): Promise<Prediction[]> {
+    const queryNorm = patternService.normalizeTitle(query);
+    if (queryNorm.terms.length === 0) return [];
+
+    const allPatterns = await patternRepository.getAllPatterns(userId);
+    if (allPatterns.length === 0) return [];
+
+    const scored = allPatterns
+      .map((pattern) => {
+        const patternNorm = patternService.normalizeTitle(pattern.rawTitle);
+        const rawLower = pattern.rawTitle.toLowerCase();
+
+        let overlapCount = 0;
+        for (const term of queryNorm.terms) {
+          if (rawLower.includes(term) || patternNorm.terms.includes(term)) {
+            overlapCount++;
+          }
+        }
+
+        if (overlapCount === 0) return null;
+
+        const score = overlapCount * 2 + pattern.frequency;
+        return { patternId: pattern.id, rawTitle: pattern.rawTitle, score, reason: "query match" };
+      })
+      .filter((p): p is Prediction => p !== null)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map((p) => ({ ...p, score: Math.round(p.score * 100) / 100 }));
+
+    return scored;
   },
 };
