@@ -1,7 +1,7 @@
 import { Mock, vi } from "vitest";
 
-vi.mock("@/lib/repositories/prediction.repository", () => ({
-  predictionRepository: {
+vi.mock("@/lib/repositories/pattern.repository", () => ({
+  patternRepository: {
     upsertPattern: vi.fn(),
   },
 }));
@@ -48,12 +48,12 @@ describe("patternService", () => {
 
   it("upserts pattern via repository", async () => {
     const mockPattern = { id: "pat-1", userId: "user-1", titleHash: "abc", rawTitle: "buy groceries", frequency: 1, clusterId: null, createdAt: new Date(), updatedAt: new Date() };
-    const { predictionRepository } = await import("@/lib/repositories/prediction.repository");
-    (predictionRepository.upsertPattern as Mock).mockResolvedValue(mockPattern);
+    const { patternRepository } = await import("@/lib/repositories/pattern.repository");
+    (patternRepository.upsertPattern as Mock).mockResolvedValue(mockPattern);
 
     const result = await patternService.upsertPattern("user-1", "buy groceries");
 
-    expect(predictionRepository.upsertPattern).toHaveBeenCalled();
+    expect(patternRepository.upsertPattern).toHaveBeenCalled();
     expect(result).toEqual(mockPattern);
   });
 });

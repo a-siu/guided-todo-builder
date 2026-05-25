@@ -1,18 +1,19 @@
-import { predictionRepository } from "@/lib/repositories/prediction.repository";
+import { patternRepository } from "@/lib/repositories/pattern.repository";
+import { clusterRepository } from "@/lib/repositories/cluster.repository";
 
 const CLUSTER_SIMILARITY_THRESHOLD = 0.6;
 
 export const tfidfService = {
   async updateTermDf(userId: string, stemmedTerms: string[]): Promise<void> {
     for (const term of stemmedTerms) {
-      await predictionRepository.upsertTermDf(userId, term);
+      await clusterRepository.upsertTermDf(userId, term);
     }
   },
 
   async computeTfIdf(userId: string, stemmedTerms: string[]): Promise<Record<string, number>> {
-    const termDfs = await predictionRepository.getTermDfs(userId);
+    const termDfs = await clusterRepository.getTermDfs(userId);
     const dfMap = new Map(termDfs.map((t) => [t.term, t.df]));
-    const allPatterns = await predictionRepository.getAllPatterns(userId);
+    const allPatterns = await patternRepository.getAllPatterns(userId);
     const totalPatterns = allPatterns.length || 1;
 
     const vector: Record<string, number> = {};
@@ -30,7 +31,7 @@ export const tfidfService = {
 
   async assignToCluster(userId: string, patternId: string, stemmedTerms: string[]): Promise<string> {
     const vector = await this.computeTfIdf(userId, stemmedTerms);
-    const clusters = await predictionRepository.findClusters(userId);
+    const clusters = await clusterRepository.findClusters(userId);
 
     let bestClusterId: string | null = null;
     let bestScore = 0;
@@ -59,13 +60,13 @@ export const tfidfService = {
         const newW = vector[term] ?? 0;
         newCentroid[term] = oldW + (newW - oldW) / newCount;
       }
-      await predictionRepository.updateClusterCentroid(bestClusterId, newCentroid, newCount);
-      await predictionRepository.assignPatternToCluster(patternId, bestClusterId);
+      await clusterRepository.updateClusterCentroid(bestClusterId, newCentroid, newCount);
+      await patternRepository.assignPatternToCluster(patternId, bestClusterId);
       return bestClusterId;
     }
 
-    const cluster = await predictionRepository.createCluster(userId, vector);
-    await predictionRepository.assignPatternToCluster(patternId, cluster.id);
+    const cluster = await clusterRepository.createCluster(userId, vector);
+    await patternRepository.assignPatternToCluster(patternId, cluster.id);
     return cluster.id;
   },
 };

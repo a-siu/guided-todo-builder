@@ -1,6 +1,6 @@
 import { temporalService } from "@/lib/services/temporal.service";
 import { transitionService } from "@/lib/services/transition.service";
-import { predictionRepository } from "@/lib/repositories/prediction.repository";
+import { patternRepository } from "@/lib/repositories/pattern.repository";
 import { Prediction } from "@/lib/types";
 
 const WEIGHTS = {
@@ -13,6 +13,7 @@ interface PredictOpts {
   currentPatternId?: string;
   hour?: number;
   day?: number;
+  minFrequency?: number;
 }
 
 export const predictionService = {
@@ -20,11 +21,11 @@ export const predictionService = {
     const now = new Date();
     const hour = opts.hour ?? now.getUTCHours();
     const day = opts.day ?? now.getUTCDay();
-    const scored = new Map<string, { title: string; score: number; reasons: string[] }>();
+    const scored = new Map<string, { title: string; score: number; frequency: number; reasons: string[] }>();
 
     const temporals = await temporalService.getTopForTimeSlot(userId, new Date(), 5);
     for (const { pattern, count } of temporals) {
-      const entry = scored.get(pattern.id) ?? { title: pattern.rawTitle, score: 0, reasons: [] };
+      const entry = scored.get(pattern.id) ?? { title: pattern.rawTitle, score: 0, frequency: pattern.frequency, reasons: [] };
       entry.score += count * WEIGHTS.temporal;
       entry.reasons.push("temporal");
       scored.set(pattern.id, entry);
@@ -33,18 +34,18 @@ export const predictionService = {
     if (opts.currentPatternId) {
       const sequentials = await transitionService.getTopFollowUps(userId, opts.currentPatternId, 5);
       for (const { toPattern, count } of sequentials) {
-        const entry = scored.get(toPattern.id) ?? { title: toPattern.rawTitle, score: 0, reasons: [] };
+        const entry = scored.get(toPattern.id) ?? { title: toPattern.rawTitle, score: 0, frequency: toPattern.frequency, reasons: [] };
         entry.score += count * WEIGHTS.sequential;
         entry.reasons.push("sequential");
         scored.set(toPattern.id, entry);
       }
 
-      const currentPattern = await predictionRepository.findPatternById(opts.currentPatternId);
+      const currentPattern = await patternRepository.findPatternById(opts.currentPatternId);
       if (currentPattern?.clusterId) {
-        const semantics = await predictionRepository.findPatternsByCluster(currentPattern.clusterId, 5);
+        const semantics = await patternRepository.findPatternsByCluster(currentPattern.clusterId, 5);
         for (const pattern of semantics) {
           if (pattern.id === opts.currentPatternId) continue;
-          const entry = scored.get(pattern.id) ?? { title: pattern.rawTitle, score: 0, reasons: [] };
+          const entry = scored.get(pattern.id) ?? { title: pattern.rawTitle, score: 0, frequency: pattern.frequency, reasons: [] };
           entry.score += pattern.frequency * WEIGHTS.semantic;
           entry.reasons.push("semantic");
           scored.set(pattern.id, entry);
@@ -53,6 +54,7 @@ export const predictionService = {
     }
 
     const sorted = Array.from(scored.entries())
+      .filter(([, entry]) => opts.minFrequency === undefined || entry.frequency >= opts.minFrequency)
       .sort((a, b) => b[1].score - a[1].score)
       .slice(0, 3)
       .map(([patternId, data]) => ({

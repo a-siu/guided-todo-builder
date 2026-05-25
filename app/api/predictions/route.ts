@@ -11,9 +11,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const currentPatternId = searchParams.get("currentPatternId") ?? undefined;
+    const minFrequency = searchParams.get("minFrequency") ? Number(searchParams.get("minFrequency")) : undefined;
 
     const predictions = await predictionService.predict(session.user.id, {
       currentPatternId,
+      minFrequency,
     });
 
     return NextResponse.json({ predictions });

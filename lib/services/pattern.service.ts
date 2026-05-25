@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { predictionRepository } from "@/lib/repositories/prediction.repository";
+import { patternRepository } from "@/lib/repositories/pattern.repository";
 import { NormalizedTitle, Pattern } from "@/lib/types";
 
 const STOP_WORDS = new Set([
@@ -34,6 +34,6 @@ export const patternService = {
 
   async upsertPattern(userId: string, rawTitle: string): Promise<Pattern> {
     const { hash } = this.normalizeTitle(rawTitle);
-    return predictionRepository.upsertPattern(userId, hash, rawTitle);
+    return patternRepository.upsertPattern(userId, hash, rawTitle);
   },
 };

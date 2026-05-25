@@ -1,7 +1,7 @@
 import { Mock, vi } from "vitest";
 
-vi.mock("@/lib/repositories/prediction.repository", () => ({
-  predictionRepository: {
+vi.mock("@/lib/repositories/pattern.repository", () => ({
+  patternRepository: {
     findPatternById: vi.fn(),
     findPatternsByCluster: vi.fn(),
   },
@@ -22,7 +22,7 @@ vi.mock("@/lib/services/transition.service", () => ({
 import { predictionService } from "@/lib/services/prediction.service";
 import { temporalService } from "@/lib/services/temporal.service";
 import { transitionService } from "@/lib/services/transition.service";
-import { predictionRepository } from "@/lib/repositories/prediction.repository";
+import { patternRepository } from "@/lib/repositories/pattern.repository";
 
 describe("predictionService", () => {
   beforeEach(() => {
@@ -38,8 +38,8 @@ describe("predictionService", () => {
     (transitionService.getTopFollowUps as Mock).mockResolvedValue([
       { toPattern: { ...mockPattern, id: "seq-1", rawTitle: "sequential task" }, count: 2 },
     ]);
-    (predictionRepository.findPatternById as Mock).mockResolvedValue(mockPattern);
-    (predictionRepository.findPatternsByCluster as Mock).mockResolvedValue([
+    (patternRepository.findPatternById as Mock).mockResolvedValue(mockPattern);
+    (patternRepository.findPatternsByCluster as Mock).mockResolvedValue([
       { ...mockPattern, id: "sem-1", rawTitle: "semantic task" },
     ]);
 
@@ -59,10 +59,23 @@ describe("predictionService", () => {
 
   it("returns empty array when no data exists", async () => {
     (temporalService.getTopForTimeSlot as Mock).mockResolvedValue([]);
-    (predictionRepository.findPatternById as Mock).mockResolvedValue(null);
+    (patternRepository.findPatternById as Mock).mockResolvedValue(null);
 
     const results = await predictionService.predict("user-1", {});
 
     expect(results).toEqual([]);
+  });
+
+  it("filters by minFrequency", async () => {
+    (temporalService.getTopForTimeSlot as Mock).mockResolvedValue([
+      { pattern: { id: "pat-1", userId: "user-1", titleHash: "a", rawTitle: "frequent task", frequency: 5, clusterId: null, createdAt: new Date(), updatedAt: new Date() }, count: 2 },
+      { pattern: { id: "pat-2", userId: "user-1", titleHash: "b", rawTitle: "rare task", frequency: 1, clusterId: null, createdAt: new Date(), updatedAt: new Date() }, count: 1 },
+    ]);
+    (patternRepository.findPatternById as Mock).mockResolvedValue(null);
+
+    const results = await predictionService.predict("user-1", { minFrequency: 3 });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].rawTitle).toBe("frequent task");
   });
 });

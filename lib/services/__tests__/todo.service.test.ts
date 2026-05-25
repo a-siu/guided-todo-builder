@@ -15,29 +15,9 @@ vi.mock("@/lib/repositories/todo.repository", () => ({
   },
 }));
 
-vi.mock("@/lib/services/pattern.service", () => ({
-  patternService: {
-    upsertPattern: vi.fn(),
-    normalizeTitle: vi.fn(),
-  },
-}));
-
-vi.mock("@/lib/services/temporal.service", () => ({
-  temporalService: {
-    recordTime: vi.fn(),
-  },
-}));
-
-vi.mock("@/lib/services/transition.service", () => ({
-  transitionService: {
-    recordTransition: vi.fn(),
-  },
-}));
-
-vi.mock("@/lib/services/tfidf.service", () => ({
-  tfidfService: {
-    updateTermDf: vi.fn(),
-    assignToCluster: vi.fn(),
+vi.mock("../prediction-orchestrator.service", () => ({
+  predictionOrchestrator: {
+    onTodoCreated: vi.fn(),
   },
 }));
 
@@ -84,36 +64,24 @@ describe("todoService", () => {
     (validation.validateTodoInput as Mock).mockReturnValue({ valid: true });
     const mockTodo = { id: "1", title: "new", userId, createdAt: new Date() };
     (todoRepository.createTodo as Mock).mockResolvedValue(mockTodo);
-    const { patternService: ps } = await import("@/lib/services/pattern.service");
-    (ps.upsertPattern as Mock).mockResolvedValue({ id: "pat-1" });
-    (ps.normalizeTitle as Mock).mockReturnValue({ hash: "abc", terms: [], stemmedTerms: [] });
+    const { predictionOrchestrator: po } = await import("../prediction-orchestrator.service");
+    (po.onTodoCreated as Mock).mockResolvedValue(undefined);
     (todoRepository.findMostRecentTodo as Mock).mockResolvedValue(null);
     const result = await todoService.createTodo({ title: "new" }, userId);
     expect(result.todo?.title).toBe("new");
     expect(cacheService.invalidate).toHaveBeenCalledWith(`todos:${userId}`);
   });
 
-  it("records prediction vectors on create", async () => {
+  it("calls prediction orchestrator on create", async () => {
     const mockTodo = { id: "1", title: "buy groceries", completed: false, deletedAt: null, createdAt: new Date(), updatedAt: new Date(), userId: "user-1" };
     (validation.validateTodoInput as Mock).mockReturnValue({ valid: true });
     (todoRepository.createTodo as Mock).mockResolvedValue(mockTodo);
-
-    const { patternService } = await import("@/lib/services/pattern.service");
-    const { temporalService } = await import("@/lib/services/temporal.service");
-    const { tfidfService } = await import("@/lib/services/tfidf.service");
-    const { transitionService } = await import("@/lib/services/transition.service");
-
-    (patternService.upsertPattern as Mock).mockResolvedValue({ id: "pat-1" });
-    (patternService.normalizeTitle as Mock).mockReturnValue({ hash: "abc", terms: ["groceries"], stemmedTerms: ["groceri"] });
-    (todoRepository.findMostRecentTodo as Mock).mockResolvedValue(null);
+    const { predictionOrchestrator } = await import("../prediction-orchestrator.service");
+    (predictionOrchestrator.onTodoCreated as Mock).mockResolvedValue(undefined);
 
     await todoService.createTodo({ title: "buy groceries" }, "user-1");
 
-    expect(patternService.upsertPattern).toHaveBeenCalledWith("user-1", mockTodo.title);
-    expect(temporalService.recordTime).toHaveBeenCalledWith("pat-1", mockTodo.createdAt);
-    expect(tfidfService.updateTermDf).toHaveBeenCalledWith("user-1", ["groceri"]);
-    expect(tfidfService.assignToCluster).toHaveBeenCalledWith("user-1", "pat-1", ["groceri"]);
-    expect(transitionService.recordTransition).not.toHaveBeenCalled();
+    expect(predictionOrchestrator.onTodoCreated).toHaveBeenCalledWith(mockTodo, "user-1");
   });
 
   it("rejects invalid input on create", async () => {
