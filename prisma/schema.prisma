@@ -14,6 +14,9 @@ model User {
   createdAt DateTime @default(now()) @db.Timestamptz()
   updatedAt DateTime @updatedAt @db.Timestamptz()
   todos     Todo[]
+  patterns  Pattern[]
+  termDfs   TermDf[]
+  clusters  Cluster[]
 }
 
 model Todo {
@@ -27,4 +30,76 @@ model Todo {
   user      User            @relation(fields: [userId], references: [id])
 
   @@index([userId])
+}
+
+model Pattern {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id])
+  titleHash String   @db.VarChar(64)
+  rawTitle  String   @db.VarChar(200)
+  frequency Int      @default(1)
+  clusterId String?  @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz()
+  updatedAt DateTime @updatedAt @db.Timestamptz()
+
+  cluster          Cluster?          @relation(fields: [clusterId], references: [id])
+  temporals        TemporalPattern[]
+  transitionsFrom  Transition[]      @relation("FromPattern")
+  transitionsTo    Transition[]      @relation("ToPattern")
+
+  @@unique([userId, titleHash])
+  @@index([userId])
+  @@index([clusterId])
+}
+
+model TermDf {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+  term   String @db.VarChar(50)
+  df     Int    @default(1)
+
+  @@unique([userId, term])
+  @@index([userId])
+}
+
+model Cluster {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id])
+  centroid    Json
+  memberCount Int      @default(0)
+  createdAt   DateTime @default(now()) @db.Timestamptz()
+  updatedAt   DateTime @updatedAt @db.Timestamptz()
+
+  patterns Pattern[]
+
+  @@index([userId])
+}
+
+model TemporalPattern {
+  id         String @id @default(uuid()) @db.Uuid
+  patternId  String @db.Uuid
+  pattern    Pattern @relation(fields: [patternId], references: [id])
+  hourBucket Int    @default(0)
+  dayBucket  Int    @default(0)
+  weekBucket Int?
+  count      Int    @default(1)
+
+  @@unique([patternId, hourBucket, dayBucket])
+}
+
+model Transition {
+  id            String @id @default(uuid()) @db.Uuid
+  userId        String @db.Uuid
+  fromPatternId String @db.Uuid
+  toPatternId   String @db.Uuid
+  count         Int    @default(1)
+
+  fromPattern Pattern @relation("FromPattern", fields: [fromPatternId], references: [id])
+  toPattern   Pattern @relation("ToPattern", fields: [toPatternId], references: [id])
+
+  @@unique([userId, fromPatternId, toPatternId])
+  @@index([userId, fromPatternId])
 }

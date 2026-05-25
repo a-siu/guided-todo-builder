@@ -8,6 +8,7 @@ vi.mock("@/lib/prisma", () => ({
     todo: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
@@ -75,5 +76,30 @@ describe("todoRepository", () => {
     const result = await todoRepository.findTodoById("1");
     expect(result?.id).toBe("1");
     expect(prisma.todo.findUnique).toHaveBeenCalledWith({ where: { id: "1" } });
+  });
+
+  it("finds most recent todo excluding given id", async () => {
+    const mockTodo = {
+      id: "prev-1",
+      title: "previous task",
+      completed: false,
+      deletedAt: null,
+      createdAt: new Date("2026-01-02"),
+      updatedAt: new Date("2026-01-02"),
+      userId: "user-1",
+    };
+    (prisma.todo.findFirst as Mock).mockResolvedValue(mockTodo);
+
+    const result = await todoRepository.findMostRecentTodo("user-1", "current-1");
+
+    expect(prisma.todo.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        id: { not: "current-1" },
+        deletedAt: null,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(result).toEqual(mockTodo);
   });
 });

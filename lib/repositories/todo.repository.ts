@@ -29,6 +29,17 @@ export const todoRepository = {
     });
   },
 
+  async findMostRecentTodo(userId: string, excludeId: string): Promise<Todo | null> {
+    return prisma.todo.findFirst({
+      where: {
+        userId,
+        id: { not: excludeId },
+        deletedAt: null,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
   async createTodo(input: CreateTodoInput, userId: string): Promise<Todo> {
     return prisma.todo.create({
       data: { title: input.title, userId },

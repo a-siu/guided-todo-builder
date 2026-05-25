@@ -11,6 +11,13 @@ vi.mock("@/lib/repositories/todo.repository", () => ({
     findTodoById: vi.fn(),
     createTodo: vi.fn(),
     updateTodo: vi.fn(),
+    findMostRecentTodo: vi.fn(),
+  },
+}));
+
+vi.mock("../prediction-orchestrator.service", () => ({
+  predictionOrchestrator: {
+    onTodoCreated: vi.fn(),
   },
 }));
 
@@ -55,10 +62,26 @@ describe("todoService", () => {
 
   it("creates todo and invalidates cache", async () => {
     (validation.validateTodoInput as Mock).mockReturnValue({ valid: true });
-    (todoRepository.createTodo as Mock).mockResolvedValue({ id: "1", title: "new", userId });
+    const mockTodo = { id: "1", title: "new", userId, createdAt: new Date() };
+    (todoRepository.createTodo as Mock).mockResolvedValue(mockTodo);
+    const { predictionOrchestrator: po } = await import("../prediction-orchestrator.service");
+    (po.onTodoCreated as Mock).mockResolvedValue(undefined);
+    (todoRepository.findMostRecentTodo as Mock).mockResolvedValue(null);
     const result = await todoService.createTodo({ title: "new" }, userId);
     expect(result.todo?.title).toBe("new");
     expect(cacheService.invalidate).toHaveBeenCalledWith(`todos:${userId}`);
+  });
+
+  it("calls prediction orchestrator on create", async () => {
+    const mockTodo = { id: "1", title: "buy groceries", completed: false, deletedAt: null, createdAt: new Date(), updatedAt: new Date(), userId: "user-1" };
+    (validation.validateTodoInput as Mock).mockReturnValue({ valid: true });
+    (todoRepository.createTodo as Mock).mockResolvedValue(mockTodo);
+    const { predictionOrchestrator } = await import("../prediction-orchestrator.service");
+    (predictionOrchestrator.onTodoCreated as Mock).mockResolvedValue(undefined);
+
+    await todoService.createTodo({ title: "buy groceries" }, "user-1");
+
+    expect(predictionOrchestrator.onTodoCreated).toHaveBeenCalledWith(mockTodo, "user-1");
   });
 
   it("rejects invalid input on create", async () => {

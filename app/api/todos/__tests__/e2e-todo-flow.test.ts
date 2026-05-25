@@ -10,6 +10,7 @@ vi.mock("@/lib/prisma", () => ({
     todo: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
@@ -20,6 +21,13 @@ vi.mock("@/lib/auth/config", () => ({
   auth: vi.fn(),
 }));
 
+vi.mock("@/lib/services/prediction-orchestrator.service", () => ({
+  predictionOrchestrator: {
+    onTodoCreated: vi.fn(),
+  },
+}));
+
+import { predictionOrchestrator } from "@/lib/services/prediction-orchestrator.service";
 import { auth } from "@/lib/auth/config";
 
 const userId = "test-user-id";
@@ -66,6 +74,7 @@ describe("E2E: Save and Load Todo Flow", () => {
     vi.clearAllMocks();
     cacheService.clear();
     (auth as Mock).mockResolvedValue({ user: { id: userId } });
+    (predictionOrchestrator.onTodoCreated as Mock).mockResolvedValue(undefined);
   });
 
   describe("Save: POST /api/todos", () => {
@@ -145,7 +154,7 @@ describe("E2E: Save and Load Todo Flow", () => {
     });
   });
 
-  describe("Full lifecycle: create → load → toggle → load → delete → load", () => {
+  describe("Full lifecycle: create -> load -> toggle -> load -> delete -> load", () => {
     it("creates, reads, updates, and soft-deletes a todo", async () => {
       (prisma.todo.create as Mock).mockResolvedValue(
         mockTodo({ id: "clx001", title: "Learn testing", completed: false })

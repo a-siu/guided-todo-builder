@@ -1,6 +1,7 @@
 import { todoRepository } from "@/lib/repositories/todo.repository";
 import { cacheService } from "./cache.service";
 import { auditService } from "./audit.service";
+import { predictionOrchestrator } from "./prediction-orchestrator.service";
 import { validateTodoInput, validateUpdateInput } from "@/lib/validation/todo.validation";
 import { CreateTodoInput, UpdateTodoInput, ApiResponse, Todo } from "@/lib/types";
 
@@ -27,6 +28,13 @@ export const todoService = {
 
     const todo = await todoRepository.createTodo(input, userId);
     cacheService.invalidate(`todos:${userId}`);
+
+    try {
+      await predictionOrchestrator.onTodoCreated(todo, userId);
+    } catch {
+      // Prediction side effects are non-critical; todo was already saved
+    }
+
     return { todo };
   },
 
