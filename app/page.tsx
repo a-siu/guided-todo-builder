@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { Todo } from "@/lib/types";
 import { TodoForm } from "@/components/TodoForm";
 import { TodoList } from "@/components/TodoList";
+import { PredictionList } from "@/components/PredictionList";
 import { AuthGuard } from "@/components/AuthGuard";
 
 const fetcher = async (url: string) => {
@@ -60,8 +61,13 @@ function HomeContent() {
           </button>
         </div>
       </div>
-      <TodoForm onSubmit={handleCreate} />
-      <TodoList todos={data.todos} onToggle={handleToggle} onDelete={handleDelete} />
+      <div className="flex gap-6">
+        <PredictionList onCreateTodo={handleCreate} />
+        <div className="flex-1 min-w-0">
+          <TodoForm onSubmit={handleCreate} />
+          <TodoList todos={data.todos} onToggle={handleToggle} onDelete={handleDelete} />
+        </div>
+      </div>
     </main>
   );
 }
