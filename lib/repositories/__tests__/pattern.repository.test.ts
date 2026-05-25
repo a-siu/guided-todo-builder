@@ -76,6 +76,19 @@ describe("patternRepository", () => {
     expect(result).toEqual(mockPatterns);
   });
 
+  it("finds the most recent pattern for a user", async () => {
+    const mockPattern = { id: "pat-2", userId: "user-1", titleHash: "def", rawTitle: "buy milk", frequency: 1, clusterId: null, createdAt: new Date("2026-05-25T10:00:00Z"), updatedAt: new Date("2026-05-25T10:00:00Z") };
+    (prisma.pattern.findFirst as Mock).mockResolvedValue(mockPattern);
+
+    const result = await patternRepository.findMostRecentPattern("user-1");
+
+    expect(prisma.pattern.findFirst).toHaveBeenCalledWith({
+      where: { userId: "user-1" },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(result).toEqual(mockPattern);
+  });
+
   it("updates pattern cluster assignment", async () => {
     (prisma.pattern.update as Mock).mockResolvedValue(null);
 

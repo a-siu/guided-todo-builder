@@ -26,6 +26,13 @@ export const patternRepository = {
     return prisma.pattern.findMany({ where: { userId } });
   },
 
+  async findMostRecentPattern(userId: string): Promise<Pattern | null> {
+    return prisma.pattern.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
   async assignPatternToCluster(patternId: string, clusterId: string): Promise<void> {
     await prisma.pattern.update({
       where: { id: patternId },
