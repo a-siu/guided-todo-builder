@@ -55,29 +55,58 @@ function HomeContent() {
     mutate();
   };
 
-  if (error) return <div className="text-center text-red-500 py-8">Failed to load todos.</div>;
-  if (!data) return <div className="text-center py-8">Loading...</div>;
+  if (error) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="bg-white rounded-2xl px-8 py-6 shadow-sm border border-red-100">
+        <p className="text-cta-600 text-center">Failed to load todos.</p>
+      </div>
+    </div>
+  );
+
+  if (!data) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="animate-pulse text-primary-400 text-lg">Loading...</div>
+    </div>
+  );
 
   return (
-    <main className="max-w-2xl mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">TODO App</h1>
+    <div className="max-w-2xl mx-auto px-4 py-6">
+      <header className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500">{session?.user?.name}</span>
+          <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold text-primary-900">Tasks</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-primary-600 font-medium">{session?.user?.name}</span>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="text-sm text-red-500 hover:underline"
+            className="text-sm text-primary-500 hover:text-primary-700 transition-colors duration-150 font-medium"
           >
             Sign out
           </button>
         </div>
+      </header>
+
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-primary-100 p-5">
+          <TodoForm onSubmit={handleCreate} onInputChange={setInputValue} />
+          <PredictionList onCreateTodo={handleCreate} query={debouncedQuery} />
+        </div>
+
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-primary-700 uppercase tracking-wide">
+              {data.todos?.length || 0} {data.todos?.length === 1 ? "task" : "tasks"}
+            </h2>
+          </div>
+          <TodoList todos={data.todos} onToggle={handleToggle} onDelete={handleDelete} />
+        </section>
       </div>
-      <div>
-        <TodoForm onSubmit={handleCreate} onInputChange={setInputValue} />
-        <PredictionList onCreateTodo={handleCreate} query={debouncedQuery} />
-        <TodoList todos={data.todos} onToggle={handleToggle} onDelete={handleDelete} />
-      </div>
-    </main>
+    </div>
   );
 }
 

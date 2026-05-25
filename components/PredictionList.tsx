@@ -24,26 +24,20 @@ export function PredictionList({ onCreateTodo, query }: PredictionListProps) {
   if (!data.predictions?.length) {
     if (query) {
       return (
-        <div className="text-sm text-gray-400 italic mb-4">
-          No matching suggestions
-        </div>
+        <div className="text-xs text-primary-400 italic mt-3">No matching suggestions</div>
       );
     }
-    return (
-      <div className="text-sm text-gray-400 italic mb-4">
-        Create a few todos to see suggestions
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="mb-4">
-      <ul className="flex flex-wrap gap-2">
+    <div className="mt-3 pt-3 border-t border-primary-100">
+      <ul className="flex flex-wrap gap-1.5">
         {data.predictions.map((p) => (
           <li key={p.patternId}>
             <button
               onClick={() => onCreateTodo(p.rawTitle)}
-              className="text-sm px-3 py-1 rounded-full border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+              className="text-xs px-3 py-1 rounded-full bg-primary-100 text-primary-700 hover:bg-primary-200 active:bg-primary-300 transition-all duration-150 cursor-pointer"
               title={`${p.rawTitle} (${p.reason})`}
             >
               {p.rawTitle}

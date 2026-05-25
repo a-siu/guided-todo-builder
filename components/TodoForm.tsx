@@ -19,21 +19,23 @@ export function TodoForm({ onSubmit, onInputChange }: TodoFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => {
-          setTitle(e.target.value);
-          onInputChange?.(e.target.value);
-        }}
-        placeholder="Add a new todo..."
-        maxLength={200}
-        className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+    <form onSubmit={handleSubmit} className="flex gap-3">
+      <div className="relative flex-1">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            onInputChange?.(e.target.value);
+          }}
+          placeholder="Add a new task..."
+          maxLength={200}
+          className="w-full px-4 py-2.5 bg-primary-50/50 border border-primary-200 rounded-xl text-primary-900 placeholder-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all duration-200 text-sm"
+        />
+      </div>
       <button
         type="submit"
-        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        className="px-5 py-2.5 bg-cta-500 text-white rounded-xl font-medium text-sm hover:bg-cta-600 active:bg-cta-700 transition-all duration-150 shadow-sm hover:shadow-md cursor-pointer"
       >
         Add
       </button>
